@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-9ndCyUaIbzAi3R+t/RJSa73qqXQfHHXQSNCv06BbHwwUaIYGOq4nBEClGYbNQC4u"
+      crossorigin="anonymous"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <title>TinyLink - Create & Manage Short Links</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+
+    <div class="container-main">
+      <!-- Header -->
+      <div class="header-section">
+        <h1 class="header-title">Create Short Links</h1>
+        <p class="header-subtitle">Fast, simple, and shareable URL shortener</p>
+      </div>
+
+      <!-- Create Form -->
+      <div class="card-create">
+        <form action="/shorturls" method="POST">
+          <label for="fullUrl" class="form-label-custom">
+            <i class="bi bi-globe"></i> Enter Your URL
+          </label>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <input
+              type="url"
+              name="fullUrl"
+              id="fullUrl"
+              class="form-control-custom"
+              placeholder="https://example.com/very/long/url"
+              style="flex: 1; min-width: 250px"
+              required
+            />
+            <button
+              type="submit"
+              class="btn-shorten"
+              style="flex: 0 0 auto; min-width: 150px"
+            >
+              <i class="bi bi-lightning-charge"></i> Shorten
+            </button>
+          </div>
+
+          <label
+            for="customCode"
+            class="form-label-custom"
+            style="margin-top: 12px"
+          >
+            <i class="bi bi-key"></i> Custom Short Code (Optional - 6-8 chars)
+          </label>
+          <input
+            type="text"
+            name="code"
+            id="customCode"
+            class="form-control-custom"
+            placeholder="e.g., abc123 (6-8 alphanumeric chars)"
+            style="width: 100%; margin-top: 6px"
+            pattern="[A-Za-z0-9]{6,8}"
+            title="Must be 6-8 alphanumeric characters (A-Z, a-z, 0-9)"
+          />
+        </form>
+      </div>
+
+      <!-- Links Table -->
+      <div class="links-section">
+        <h2 class="section-title"><i class="bi bi-list-ul"></i> Your Links</h2>
+
+        <% if (shorturls && shorturls.length > 0) { %>
+        <!-- Search and Sort Controls -->
+        <div class="search-sort-controls">
+          <div class="search-box">
+            <input
+              type="text"
+              id="searchInput"
+              class="search-input"
+              placeholder="Search by URL or short code..."
+              aria-label="Search links"
+            />
+            <i class="bi bi-search search-icon"></i>
+          </div>
+          <div class="sort-controls">
+            <label for="sortSelect" class="sort-label">Sort by:</label>
+            <select id="sortSelect" class="sort-select">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="clicks-high">Most Clicks</option>
+              <option value="clicks-low">Least Clicks</option>
+              <option value="url-asc">URL (A-Z)</option>
+              <option value="code-asc">Code (A-Z)</option>
+            </select>
+          </div>
+          <button id="resetBtn" class="btn-reset" title="Reset search and sort">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset
+          </button>
+        </div>
+
+        <div class="table-custom">
+          <table>
+            <thead>
+              <tr>
+                <th>Full URL</th>
+                <th>Short Code</th>
+                <th>Clicks</th>
+                <th>Last Clicked</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% shorturls.forEach(shorturl => { %>
+              <tr>
+                <td class="url-cell">
+                  <a
+                    href="<%= shorturl.full %>"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="url-link"
+                    title="<%= shorturl.full %>"
+                  >
+                    <%= shorturl.full %>
+                  </a>
+                </td>
+                <td>
+                  <span
+                    class="short-code"
+                    onclick="openShortUrl('<%= shorturl.short %>')"
+                    title="Click to open in new tab"
+                  >
+                    <%= shorturl.short %>
+                  </span>
+                </td>
+                <td>
+                  <span class="badge-clicks">
+                    <i class="bi bi-cursor"></i> <%= shorturl.clicks %>
+                  </span>
+                </td>
+                <td>
+                  <div class="last-clicked">
+                    <% if (shorturl.lastClicked) { %>
+                    <span class="last-clicked-time"
+                      ><%= new Date(shorturl.lastClicked).toLocaleDateString()
+                      %></span
+                    >
+                    <br />
+                    <small
+                      ><%= new Date(shorturl.lastClicked).toLocaleTimeString()
+                      %></small
+                    >
+                    <% } else { %>
+                    <span style="color: #cbd5e0">Never</span>
+                    <% } %>
+                  </div>
+                </td>
+                <td>
+                  <div class="btn-group-custom">
+                    <button
+                      type="button"
+                      class="btn-action btn-copy"
+                      onclick="copyLink('<%= shorturl.short %>')"
+                      title="Copy short link"
+                    >
+                      <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-action btn-stats"
+                      onclick="showStats('<%= shorturl.short %>')"
+                      title="View statistics"
+                    >
+                      <i class="bi bi-bar-chart"></i> Stats
+                    </button>
+                    <form
+                      method="POST"
+                      action="/<%= shorturl._id %>"
+                      class="btn-delete-form"
+                      onsubmit="return confirm('Delete this link?')"
+                    >
+                      <input type="hidden" name="_method" value="DELETE" />
+                      <button type="submit" class="btn-action btn-delete">
+                        <i class="bi bi-trash"></i> Delete
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <% } else { %>
+        <div class="empty-state">
+          <div class="empty-icon">
+            <i class="bi bi-inbox"></i>
+          </div>
+          <div class="empty-title">No links yet</div>
+          <div class="empty-text">
+            Create your first short link above to get started
+          </div>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Stats Modal -->
+    <div id="statsModal" class="stats-modal" style="display: none">
+      <div class="stats-modal-content">
+        <div class="stats-modal-header">
+          <h3 class="stats-modal-title">Link Statistics</h3>
+        </div>
+        <div class="stats-modal-body">
+          <div class="stats-item">
+            <span class="stats-label">Short Code:</span>
+            <span class="stats-value" id="statShortCode">-</span>
+          </div>
+          <div class="stats-item">
+            <span class="stats-label">Full URL:</span>
+            <span class="stats-value stats-url" id="statFullUrl" title=""
+              >-</span
+            >
+          </div>
+          <div class="stats-item">
+            <span class="stats-label">Total Clicks:</span>
+            <span class="stats-value stats-badge" id="statClicks">0</span>
+          </div>
+          <div class="stats-item">
+            <span class="stats-label">Link ID:</span>
+            <span class="stats-value stats-id" id="statId">-</span>
+          </div>
+          <div class="stats-item">
+            <span class="stats-label">Last Clicked:</span>
+            <span class="stats-value" id="statLastClicked">Never</span>
+          </div>
+        </div>
+        <div class="stats-modal-footer">
+          <button
+            type="button"
+            class="btn-modal-close"
+            onclick="closeStatsModal()"
+          >
+            <i class="bi bi-check-circle"></i> Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Data storage for original links
+      let allLinks = [];
+
+      // Initialize links data
+      function initializeLinks() {
+        const rows = document.querySelectorAll(".table-custom tbody tr");
+        allLinks = Array.from(rows).map((row) => {
+          const cells = row.querySelectorAll("td");
+          return {
+            element: row,
+            fullUrl: cells[0].textContent.trim().toLowerCase(),
+            shortCode: cells[1].textContent.trim().toLowerCase(),
+            clicks: parseInt(cells[2].textContent.replace(/\D/g, "")) || 0,
+            lastClicked: cells[3].textContent.trim(),
+            createdTime:
+              row.getAttribute("data-created") || new Date().getTime(),
+          };
+        });
+      }
+
+      // Filter links based on search query
+      function filterLinks(query) {
+        const filtered = allLinks.filter(
+          (link) =>
+            link.fullUrl.includes(query.toLowerCase()) ||
+            link.shortCode.includes(query.toLowerCase())
+        );
+        displayLinks(filtered);
+      }
+
+      // Sort links
+      function sortLinks(sortBy) {
+        let sorted = [...allLinks];
+
+        switch (sortBy) {
+          case "newest":
+            sorted.reverse();
+            break;
+          case "oldest":
+            // Already in original order
+            break;
+          case "clicks-high":
+            sorted.sort((a, b) => b.clicks - a.clicks);
+            break;
+          case "clicks-low":
+            sorted.sort((a, b) => a.clicks - b.clicks);
+            break;
+          case "url-asc":
+            sorted.sort((a, b) => a.fullUrl.localeCompare(b.fullUrl));
+            break;
+          case "code-asc":
+            sorted.sort((a, b) => a.shortCode.localeCompare(b.shortCode));
+            break;
+          default:
+            break;
+        }
+
+        displayLinks(sorted);
+      }
+
+      // Display links in table
+      function displayLinks(linksToDisplay) {
+        const tbody = document.querySelector(".table-custom tbody");
+        tbody.innerHTML = "";
+
+        if (linksToDisplay.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #718096;">No links found matching your search.</td></tr>';
+          return;
+        }
+
+        linksToDisplay.forEach((link) => {
+          tbody.appendChild(link.element);
+        });
+      }
+
+      // Event listeners
+      document.getElementById("searchInput").addEventListener("keyup", (e) => {
+        const query = e.target.value.trim();
+        if (query) {
+          filterLinks(query);
+        } else {
+          displayLinks(allLinks);
+        }
+      });
+
+      document.getElementById("sortSelect").addEventListener("change", (e) => {
+        sortLinks(e.target.value);
+      });
+
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        document.getElementById("searchInput").value = "";
+        document.getElementById("sortSelect").value = "newest";
+        displayLinks(allLinks);
+      });
+
+      // Initialize on page load
+      document.addEventListener("DOMContentLoaded", initializeLinks);
+
+      function openShortUrl(shortCode) {
+        const baseUrl = window.location.origin;
+        const shortUrl = baseUrl + "/" + shortCode;
+        window.open(shortUrl, "_blank");
+      }
+
+      function copyLink(shortCode) {
+        const baseUrl = window.location.origin;
+        const shortUrl = baseUrl + "/" + shortCode;
+        navigator.clipboard
+          .writeText(shortUrl)
+          .then(() => {
+            showToast("Short link copied!");
+          })
+          .catch((err) => {
+            console.error("Failed to copy:", err);
+            showToast("Failed to copy", "error");
+          });
+      }
+
+      async function showStats(shortCode) {
+        try {
+          const response = await fetch(`/api/links/${shortCode}`);
+          if (!response.ok) {
+            if (response.status === 404) {
+              showToast("Link not found", "error");
+            } else {
+              showToast("Failed to fetch stats", "error");
+            }
+            return;
+          }
+          const data = await response.json();
+
+          // Populate modal with data
+          document.getElementById("statShortCode").textContent = data.short;
+          document.getElementById("statFullUrl").textContent = data.full;
+          document.getElementById("statFullUrl").title = data.full;
+          document.getElementById("statClicks").textContent = data.clicks;
+          document.getElementById("statId").textContent = data.id;
+
+          // Format last clicked date
+          if (data.lastClicked) {
+            const lastClickedDate = new Date(data.lastClicked);
+            document.getElementById("statLastClicked").textContent =
+              lastClickedDate.toLocaleDateString() +
+              " " +
+              lastClickedDate.toLocaleTimeString();
+          } else {
+            document.getElementById("statLastClicked").textContent = "Never";
+          }
+
+          // Show modal
+          document.getElementById("statsModal").style.display = "flex";
+        } catch (err) {
+          console.error("Error fetching stats:", err);
+          showToast("Error fetching stats", "error");
+        }
+      }
+
+      function closeStatsModal() {
+        document.getElementById("statsModal").style.display = "none";
+      }
+
+      // Close modal when clicking outside
+      document.addEventListener("click", (e) => {
+        const modal = document.getElementById("statsModal");
+        if (e.target === modal) {
+          closeStatsModal();
+        }
+      });
+
+      function showToast(message, type = "success") {
+        const toast = document.createElement("div");
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: ${type === "success" ? "#28a745" : "#dc3545"};
+          color: white;
+          padding: 15px 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          z-index: 9999;
+          font-weight: 500;
+          animation: slideIn 0.3s ease;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.animation = "slideOut 0.3s ease";
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
+      }
+
+      const style = document.createElement("style");
+      style.textContent = `
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    </script>
+  </body>
+</html>
